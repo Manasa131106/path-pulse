@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, Compass, Heart, User, LogOut, BarChart2 } from 'lucide-react';
+import { Home, Compass, Heart, User, LogOut, BarChart2, ShieldAlert } from 'lucide-react';
 import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
 import Dashboard from './components/Dashboard';
 import Pulse from './components/Pulse';
 import Path from './components/Path';
 import Insights from './components/Insights';
+import WeeklyReport from './components/WeeklyReport';
 import { UserProfile, DashboardData } from './types';
 
 export default function App() {
@@ -121,6 +122,11 @@ export default function App() {
           {activeTab === 'insights' && (
             <motion.div key="insights" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <Insights userId={user.id} />
+            </motion.div>
+          )}
+          {activeTab === 'report' && (
+            <motion.div key="report" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <WeeklyReport userId={user.id} />
             </motion.div>
           )}
           {activeTab === 'profile' && (
@@ -239,6 +245,13 @@ export default function App() {
         >
           <BarChart2 className="w-6 h-6" />
           <span className="text-[10px] font-bold uppercase tracking-widest">Insights</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('report')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'report' ? 'text-[#5A5A40]' : 'text-gray-400'}`}
+        >
+          <ShieldAlert className="w-6 h-6" />
+          <span className="text-[10px] font-bold uppercase tracking-widest">Report</span>
         </button>
         <button 
           onClick={() => setActiveTab('profile')}

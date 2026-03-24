@@ -38,6 +38,8 @@ export interface Task {
   type: 'daily' | 'weekly';
   category: string;
   difficulty: 'Easy' | 'Medium' | 'Hard';
+  priority: number;
+  isLocked?: boolean;
   aiReasoning?: string;
 }
 
@@ -56,6 +58,12 @@ export interface PulseResponse {
     status: 'Normal' | 'Warning' | 'Burnout';
     recommendation: 'reduce tasks' | 'maintain' | 'push harder';
   };
+}
+
+export interface Decision {
+  status: "Burnout" | "Normal" | "Growth";
+  action: "Reduce workload" | "Maintain" | "Increase difficulty";
+  reason: string;
 }
 
 export interface DashboardData {
@@ -78,6 +86,7 @@ export interface DashboardData {
     burnoutAlert?: string;
     recommendedAction: 'reduce tasks' | 'maintain' | 'increase difficulty';
   };
+  decision?: Decision;
 }
 
 export interface InsightData {

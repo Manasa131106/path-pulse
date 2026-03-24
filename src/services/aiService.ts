@@ -175,6 +175,47 @@ export async function generateInitialRoadmap(profile: any) {
   return JSON.parse(response.text || '{}');
 }
 
+export async function generateWeeklyMentorReport(
+  tasksCompleted: number,
+  totalTasks: number,
+  streak: number,
+  moodHistory: string[]
+) {
+  const response = await ai.models.generateContent({
+    model: "gemini-3-flash-preview",
+    contents: `Generate a weekly performance report for a student.
+    
+    INPUT DATA:
+    - Tasks Completed: ${tasksCompleted} out of ${totalTasks}
+    - Current Streak: ${streak} days
+    - Last 5 Mood Entries: ${moodHistory.join(", ")}
+    
+    TONE:
+    - Strict mentor.
+    - Honest, blunt, and not soft.
+    - No sugar-coating.
+    
+    OUTPUT STRUCTURE (JSON):
+    - performanceSummary: A blunt assessment of their week.
+    - biggestMistake: Identify a likely failure point based on the data (e.g., low completion despite good mood, or breaking streak).
+    - improvementAdvice: One actionable, tough-love instruction for next week.`,
+    config: {
+      responseMimeType: "application/json",
+      responseSchema: {
+        type: Type.OBJECT,
+        properties: {
+          performanceSummary: { type: Type.STRING },
+          biggestMistake: { type: Type.STRING },
+          improvementAdvice: { type: Type.STRING }
+        },
+        required: ["performanceSummary", "biggestMistake", "improvementAdvice"]
+      }
+    }
+  });
+
+  return JSON.parse(response.text || '{}');
+}
+
 export async function generateWeeklyInsights(
   weeklyCompletion: any[], 
   moodHistory: any[], 

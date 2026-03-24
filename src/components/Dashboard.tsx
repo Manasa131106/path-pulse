@@ -41,6 +41,11 @@ export default function Dashboard({ data, onToggleTask }: DashboardProps) {
     }
   }, [data.tasks]);
 
+  const handleToggle = (taskId: number, isLocked?: boolean) => {
+    if (isLocked) return;
+    onToggleTask(taskId);
+  };
+
   return (
     <div className="space-y-8 pb-24">
       <AnimatePresence>
@@ -259,18 +264,24 @@ export default function Dashboard({ data, onToggleTask }: DashboardProps) {
           {data.tasks?.map((task: Task) => (
             <motion.div 
               key={task.id}
-              whileHover={{ scale: 1.01 }}
-              onClick={() => onToggleTask(task.id)}
-              className={`p-5 rounded-2xl flex items-center gap-4 cursor-pointer transition-all ${task.completed ? 'bg-gray-50 opacity-60' : 'bg-[#F5F5F0] hover:bg-[#EBEBE0]'}`}
+              whileHover={task.isLocked ? {} : { scale: 1.01 }}
+              onClick={() => handleToggle(task.id, task.isLocked)}
+              className={`p-5 rounded-2xl flex items-center gap-4 transition-all ${
+                task.completed ? 'bg-gray-50 opacity-60' : 
+                task.isLocked ? 'bg-gray-100 opacity-40 cursor-not-allowed' : 
+                'bg-[#F5F5F0] hover:bg-[#EBEBE0] cursor-pointer'
+              }`}
             >
               <div className="flex items-center gap-4 flex-1">
                 {task.completed ? (
                   <CheckCircle2 className="w-6 h-6 text-green-500" />
+                ) : task.isLocked ? (
+                  <Zap className="w-6 h-6 text-gray-300" />
                 ) : (
                   <Circle className="w-6 h-6 text-gray-400" />
                 )}
                 <div className="flex flex-col">
-                  <span className={`text-lg ${task.completed ? 'line-through text-gray-500' : 'text-[#1a1a1a]'}`}>
+                  <span className={`text-lg ${task.completed ? 'line-through text-gray-500' : task.isLocked ? 'text-gray-400' : 'text-[#1a1a1a]'}`}>
                     {task.text}
                   </span>
                   <div className="flex items-center gap-2 mt-1">
