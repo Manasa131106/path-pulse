@@ -1,5 +1,5 @@
 import { motion } from 'motion/react';
-import { CheckCircle2, Circle, Trophy, Flame, TrendingUp } from 'lucide-react';
+import { CheckCircle2, Circle, Trophy, Flame, TrendingUp, User } from 'lucide-react';
 import { DashboardData, Task } from '../types';
 
 interface DashboardProps {
@@ -48,19 +48,36 @@ export default function Dashboard({ data, onToggleTask }: DashboardProps) {
         <section className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100">
           <h2 className="text-xl font-serif font-bold mb-6 flex items-center gap-2">
             <Trophy className="w-5 h-5 text-yellow-500" />
-            Achievements
+            Avatar Builder
           </h2>
-          <div className="flex gap-4">
-            {[...Array(3)].map((_, i) => (
-              <div 
-                key={i} 
-                className={`w-16 h-16 rounded-full flex items-center justify-center border-2 ${i < data.achievements ? 'bg-yellow-50 border-yellow-200' : 'bg-gray-50 border-gray-100 opacity-30'}`}
-              >
-                <Trophy className={`w-8 h-8 ${i < data.achievements ? 'text-yellow-500' : 'text-gray-300'}`} />
-              </div>
-            ))}
+          <div className="flex flex-col items-center gap-4">
+            <div className="relative w-32 h-32 bg-[#F5F5F0] rounded-full flex items-center justify-center overflow-hidden border-4 border-white shadow-inner">
+              <User className="w-20 h-20 text-gray-300" />
+              {data.avatarParts.map((part, i) => (
+                <motion.div
+                  key={part}
+                  initial={{ opacity: 0, scale: 0.5 }}
+                  animate={{ opacity: 1, scale: 1 }}
+                  className="absolute inset-0 flex items-center justify-center pointer-events-none"
+                >
+                  <div className="w-full h-full bg-[#5A5A40]/10 border-2 border-[#5A5A40]/20 rounded-full flex items-center justify-center">
+                    <span className="text-[10px] font-bold uppercase text-[#5A5A40]">{part}</span>
+                  </div>
+                </motion.div>
+              ))}
+            </div>
+            <div className="flex gap-2">
+              {["Base", "Hair", "Eyes", "Outfit", "Accessory"].map((part, i) => (
+                <div 
+                  key={part} 
+                  className={`w-8 h-8 rounded-lg flex items-center justify-center border ${data.avatarParts.includes(part) ? 'bg-[#5A5A40] border-[#5A5A40] text-white' : 'bg-gray-50 border-gray-100 text-gray-300'}`}
+                >
+                  <span className="text-[8px] font-bold">{i + 1}</span>
+                </div>
+              ))}
+            </div>
           </div>
-          <p className="mt-4 text-sm text-gray-500">Unlock more by completing your daily path.</p>
+          <p className="mt-4 text-center text-xs text-gray-500">Complete tasks to unlock more parts!</p>
         </section>
       </div>
 

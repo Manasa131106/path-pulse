@@ -1,12 +1,15 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { Home, Compass, Heart, User, LogOut } from 'lucide-react';
+import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
 import Dashboard from './components/Dashboard';
 import Pulse from './components/Pulse';
+import Path from './components/Path';
 import { UserProfile, DashboardData } from './types';
 
 export default function App() {
+  const [authUserId, setAuthUserId] = useState<string | null>(null);
   const [user, setUser] = useState<UserProfile | null>(null);
   const [activeTab, setActiveTab] = useState('home');
   const [dashboardData, setDashboardData] = useState<DashboardData | null>(null);
@@ -15,6 +18,7 @@ export default function App() {
   useEffect(() => {
     const savedUserId = localStorage.getItem('path_pulse_userId');
     if (savedUserId) {
+      setAuthUserId(savedUserId);
       fetchUser(savedUserId);
     } else {
       setLoading(false);
@@ -36,6 +40,16 @@ export default function App() {
     }
   };
 
+  const handleAuthSuccess = (userId: string, isNewUser: boolean) => {
+    setAuthUserId(userId);
+    localStorage.setItem('path_pulse_userId', userId);
+    if (!isNewUser) {
+      fetchUser(userId);
+    } else {
+      setLoading(false);
+    }
+  };
+
   const handleOnboardingComplete = async (profile: any) => {
     setLoading(true);
     try {
@@ -46,7 +60,6 @@ export default function App() {
       });
       const newUser = await res.json();
       setUser(newUser);
-      localStorage.setItem('path_pulse_userId', newUser.id);
       await fetchUser(newUser.id);
     } catch (err) {
       console.error(err);
@@ -77,8 +90,12 @@ export default function App() {
     );
   }
 
+  if (!authUserId) {
+    return <Auth onAuthSuccess={handleAuthSuccess} />;
+  }
+
   if (!user) {
-    return <Onboarding onComplete={handleOnboardingComplete} />;
+    return <Onboarding userId={authUserId} onComplete={handleOnboardingComplete} />;
   }
 
   return (
@@ -88,6 +105,11 @@ export default function App() {
           {activeTab === 'home' && dashboardData && (
             <motion.div key="home" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
               <Dashboard data={dashboardData} onToggleTask={handleToggleTask} />
+            </motion.div>
+          )}
+          {activeTab === 'path' && (
+            <motion.div key="path" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <Path educationLevel={user.educationLevel} />
             </motion.div>
           )}
           {activeTab === 'pulse' && (
@@ -114,9 +136,13 @@ export default function App() {
                   </div>
                   <div className="pt-6">
                     <p className="text-gray-500 text-sm mb-4">Vision Board</p>
-                    <div className="w-full aspect-video bg-gray-100 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-200">
-                      <p className="text-gray-400 text-sm">Your vision board will appear here</p>
-                    </div>
+                    {user.visionBoard ? (
+                      <img src={user.visionBoard} alt="Vision Board" className="w-full rounded-2xl shadow-sm" referrerPolicy="no-referrer" />
+                    ) : (
+                      <div className="w-full aspect-video bg-gray-100 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-200">
+                        <p className="text-gray-400 text-sm">No vision board uploaded</p>
+                      </div>
+                    )}
                   </div>
                 </div>
                 <button 
@@ -135,13 +161,20 @@ export default function App() {
         </AnimatePresence>
       </main>
 
-      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-xl border border-white/20 px-8 py-4 rounded-full shadow-2xl flex gap-12 z-50">
+      <nav className="fixed bottom-8 left-1/2 -translate-x-1/2 bg-white/80 backdrop-blur-xl border border-white/20 px-6 py-4 rounded-full shadow-2xl flex gap-8 z-50">
         <button 
           onClick={() => setActiveTab('home')}
           className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'home' ? 'text-[#5A5A40]' : 'text-gray-400'}`}
         >
           <Home className="w-6 h-6" />
           <span className="text-[10px] font-bold uppercase tracking-widest">Home</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('path')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'path' ? 'text-[#5A5A40]' : 'text-gray-400'}`}
+        >
+          <Compass className="w-6 h-6" />
+          <span className="text-[10px] font-bold uppercase tracking-widest">Path</span>
         </button>
         <button 
           onClick={() => setActiveTab('pulse')}

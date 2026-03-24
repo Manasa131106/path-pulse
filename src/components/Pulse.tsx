@@ -1,37 +1,54 @@
 import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Brain, Send, Sparkles, Activity, Zap } from 'lucide-react';
-import { PulseState } from '../types';
+import { PulseResponse } from '../types';
 
 interface PulseProps {
   userId: string;
 }
 
 export default function Pulse({ userId }: PulseProps) {
-  const [state, setState] = useState<PulseState>({ mood: 'Good', stress: 'Low', motivation: 'Medium' });
+  const [step, setStep] = useState(0);
+  const [answers, setAnswers] = useState<number[]>([3, 3, 3, 3, 3]);
   const [analysis, setAnalysis] = useState<any>(null);
   const [loading, setLoading] = useState(false);
 
-  const options = {
-    mood: ['Great', 'Good', 'Neutral', 'Low', 'Down'],
-    stress: ['None', 'Low', 'Medium', 'High', 'Extreme'],
-    motivation: ['High', 'Medium', 'Low', 'None']
+  const questions = [
+    "How focused did you feel on your goals this week?",
+    "How would you rate your overall stress level?",
+    "How motivated are you to learn something new today?",
+    "How satisfied are you with your progress this week?",
+    "How well are you balancing study and rest?"
+  ];
+
+  const handleAnswer = (val: number) => {
+    const newAnswers = [...answers];
+    newAnswers[step] = val;
+    setAnswers(newAnswers);
+    if (step < questions.length - 1) {
+      setStep(step + 1);
+    }
   };
 
   const handleSubmit = async () => {
     setLoading(true);
     try {
-      // Save to backend
+      const moodScore = answers[0] + answers[3];
+      const stressScore = answers[1] + answers[4];
+      const motivationScore = answers[2];
+
+      const mood = moodScore > 7 ? 'Great' : moodScore > 4 ? 'Good' : 'Low';
+      const stress = stressScore > 7 ? 'High' : stressScore > 4 ? 'Medium' : 'Low';
+      const motivation = motivationScore > 4 ? 'High' : motivationScore > 2 ? 'Medium' : 'Low';
+
       await fetch('/api/pulse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ ...state, userId })
+        body: JSON.stringify({ userId, answers, mood, stress, motivation })
       });
 
-      // Get AI analysis (mocking the call to our service which would be done on backend or client)
-      // For this demo, we'll call a client-side service that uses Gemini
       const { analyzePulse } = await import('../services/aiService');
-      const result = await analyzePulse(state.mood, state.stress, state.motivation);
+      const result = await analyzePulse(mood, stress, motivation);
       setAnalysis(result);
     } catch (err) {
       console.error(err);
@@ -44,43 +61,53 @@ export default function Pulse({ userId }: PulseProps) {
     <div className="space-y-8 pb-24">
       <header>
         <h1 className="text-3xl font-serif font-bold text-[#1a1a1a]">Pulse Check</h1>
-        <p className="text-[#5A5A40] opacity-80">How are you feeling today? Our AI will analyze your state.</p>
+        <p className="text-[#5A5A40] opacity-80">Weekly psychology-based emotional monitoring.</p>
       </header>
 
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        {(Object.keys(options) as Array<keyof typeof options>).map((key) => (
-          <div key={key} className="bg-white p-6 rounded-[32px] shadow-sm border border-gray-100">
-            <h3 className="text-sm font-bold uppercase tracking-widest text-[#5A5A40] mb-4 flex items-center gap-2">
-              {key === 'mood' && <Activity className="w-4 h-4" />}
-              {key === 'stress' && <Zap className="w-4 h-4" />}
-              {key === 'motivation' && <Brain className="w-4 h-4" />}
-              {key}
-            </h3>
-            <div className="flex flex-wrap gap-2">
-              {options[key].map((opt) => (
+      {!analysis ? (
+        <div className="bg-white p-8 rounded-[32px] shadow-sm border border-gray-100">
+          <div className="mb-8">
+            <div className="flex justify-between items-center mb-4">
+              <span className="text-xs font-bold uppercase tracking-widest text-[#5A5A40]">Question {step + 1} of 5</span>
+              <div className="flex gap-1">
+                {[...Array(5)].map((_, i) => (
+                  <div key={i} className={`h-1 w-8 rounded-full ${i <= step ? 'bg-[#5A5A40]' : 'bg-gray-200'}`} />
+                ))}
+              </div>
+            </div>
+            <h2 className="text-2xl font-serif font-bold text-[#1a1a1a]">{questions[step]}</h2>
+          </div>
+
+          <div className="space-y-4">
+            <div className="flex justify-between text-xs text-gray-400 uppercase font-bold tracking-widest px-2">
+              <span>Not at all</span>
+              <span>Very much</span>
+            </div>
+            <div className="flex justify-between gap-2">
+              {[1, 2, 3, 4, 5].map((val) => (
                 <button
-                  key={opt}
-                  onClick={() => setState({ ...state, [key]: opt })}
-                  className={`px-4 py-2 rounded-full text-sm font-medium transition-all ${state[key] === opt ? 'bg-[#5A5A40] text-white' : 'bg-[#F5F5F0] text-[#5A5A40] hover:bg-[#EBEBE0]'}`}
+                  key={val}
+                  onClick={() => handleAnswer(val)}
+                  className={`flex-1 py-4 rounded-2xl text-xl font-bold transition-all ${answers[step] === val ? 'bg-[#5A5A40] text-white scale-105' : 'bg-[#F5F5F0] text-[#5A5A40] hover:bg-[#EBEBE0]'}`}
                 >
-                  {opt}
+                  {val}
                 </button>
               ))}
             </div>
           </div>
-        ))}
-      </div>
 
-      <button
-        onClick={handleSubmit}
-        disabled={loading}
-        className="w-full py-4 bg-[#5A5A40] text-white rounded-full font-medium flex items-center justify-center gap-2 hover:bg-[#4A4A30] transition-colors shadow-lg shadow-[#5A5A40]/20 disabled:opacity-50"
-      >
-        {loading ? 'Analyzing...' : 'Analyze My Pulse'}
-        <Send className="w-5 h-5" />
-      </button>
-
-      {analysis && (
+          {step === questions.length - 1 && (
+            <button
+              onClick={handleSubmit}
+              disabled={loading}
+              className="w-full mt-8 py-4 bg-[#5A5A40] text-white rounded-full font-medium flex items-center justify-center gap-2 hover:bg-[#4A4A30] transition-colors shadow-lg shadow-[#5A5A40]/20 disabled:opacity-50"
+            >
+              {loading ? 'Analyzing...' : 'Submit Pulse'}
+              <Send className="w-5 h-5" />
+            </button>
+          )}
+        </div>
+      ) : (
         <motion.div 
           initial={{ opacity: 0, scale: 0.95 }}
           animate={{ opacity: 1, scale: 1 }}
@@ -115,6 +142,17 @@ export default function Pulse({ userId }: PulseProps) {
                 </div>
               </div>
             </div>
+
+            <button
+              onClick={() => {
+                setAnalysis(null);
+                setStep(0);
+                setAnswers([3, 3, 3, 3, 3]);
+              }}
+              className="mt-4 px-6 py-2 bg-white/10 hover:bg-white/20 rounded-full text-sm font-medium transition-all"
+            >
+              Retake Pulse
+            </button>
           </div>
         </motion.div>
       )}

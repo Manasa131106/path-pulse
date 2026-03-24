@@ -3,15 +3,17 @@ import { motion, AnimatePresence } from 'motion/react';
 import { ChevronRight, User, GraduationCap, Calendar, Target, Heart, Sparkles } from 'lucide-react';
 
 interface OnboardingProps {
+  userId: string;
   onComplete: (profile: any) => void;
 }
 
-export default function Onboarding({ onComplete }: OnboardingProps) {
+export default function Onboarding({ userId, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
   const [profile, setProfile] = useState({
     fullName: '',
     educationLevel: 'B.Tech',
     dob: '',
+    visionBoard: '',
     shortTerm: '',
     longTerm: '',
     reason: '',
@@ -20,29 +22,34 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
 
   const steps = [
     {
-      title: "Welcome to Path & Pulse",
-      description: "Let's start by setting up your profile.",
+      title: "Profile Setup",
+      description: "Let's start with the basics.",
       fields: [
         { name: 'fullName', label: 'Full Name', type: 'text', icon: <User className="w-5 h-5" /> },
         { name: 'educationLevel', label: 'Education Level', type: 'select', options: ['10th', 'Inter', 'B.Tech', 'Other'], icon: <GraduationCap className="w-5 h-5" /> },
         { name: 'dob', label: 'Date of Birth', type: 'date', icon: <Calendar className="w-5 h-5" /> },
+        { name: 'visionBoard', label: 'Vision Board Image URL', type: 'text', icon: <Sparkles className="w-5 h-5" /> },
       ]
     },
     {
-      title: "Your Goals",
-      description: "What are you aiming for in the short and long term?",
-      fields: [
-        { name: 'shortTerm', label: 'Short-term Goal', type: 'text', icon: <Target className="w-5 h-5" /> },
-        { name: 'longTerm', label: 'Long-term Goal', type: 'text', icon: <ChevronRight className="w-5 h-5" /> },
-      ]
+      title: "Short-term Goal",
+      description: "What do you want to achieve in the next 3-6 months?",
+      fields: [{ name: 'shortTerm', label: 'Short-term Goal', type: 'text', icon: <Target className="w-5 h-5" /> }]
+    },
+    {
+      title: "Long-term Goal",
+      description: "Where do you see yourself in 5 years?",
+      fields: [{ name: 'longTerm', label: 'Long-term Goal', type: 'text', icon: <ChevronRight className="w-5 h-5" /> }]
     },
     {
       title: "Why Path & Pulse?",
-      description: "Tell us why you're here and what interests you.",
-      fields: [
-        { name: 'reason', label: 'Why are you using the app?', type: 'textarea', icon: <Heart className="w-5 h-5" /> },
-        { name: 'interests', label: 'What are your interests?', type: 'text', icon: <Sparkles className="w-5 h-5" /> },
-      ]
+      description: "What brings you to our ecosystem?",
+      fields: [{ name: 'reason', label: 'Your Reason', type: 'textarea', icon: <Heart className="w-5 h-5" /> }]
+    },
+    {
+      title: "Interests",
+      description: "What topics or skills fascinate you?",
+      fields: [{ name: 'interests', label: 'Interests', type: 'text', icon: <Sparkles className="w-5 h-5" /> }]
     }
   ];
 
@@ -50,7 +57,7 @@ export default function Onboarding({ onComplete }: OnboardingProps) {
     if (step < steps.length - 1) {
       setStep(step + 1);
     } else {
-      onComplete(profile);
+      onComplete({ ...profile, userId });
     }
   };
 

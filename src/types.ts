@@ -1,5 +1,6 @@
 export interface UserProfile {
   id: string;
+  email: string;
   fullName: string;
   educationLevel: string;
   dob: string;
@@ -18,12 +19,22 @@ export interface Task {
   userId: string;
   text: string;
   completed: boolean;
+  type: 'daily' | 'weekly';
+  category: string;
 }
 
-export interface PulseState {
+export interface PulseResponse {
+  userId: string;
+  timestamp: string;
+  answers: number[]; // 1-5 scale for 5 questions
   mood: string;
   stress: string;
   motivation: string;
+  aiFeedback?: {
+    analysis: string;
+    suggestion: string;
+    motivation: string;
+  };
 }
 
 export interface DashboardData {
@@ -32,4 +43,5 @@ export interface DashboardData {
   progress: number;
   streak: number;
   achievements: number;
+  avatarParts: string[]; // List of unlocked parts
 }
