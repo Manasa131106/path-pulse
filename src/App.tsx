@@ -1,11 +1,12 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { Home, Compass, Heart, User, LogOut } from 'lucide-react';
+import { Home, Compass, Heart, User, LogOut, BarChart2 } from 'lucide-react';
 import Auth from './components/Auth';
 import Onboarding from './components/Onboarding';
 import Dashboard from './components/Dashboard';
 import Pulse from './components/Pulse';
 import Path from './components/Path';
+import Insights from './components/Insights';
 import { UserProfile, DashboardData } from './types';
 
 export default function App() {
@@ -109,7 +110,7 @@ export default function App() {
           )}
           {activeTab === 'path' && (
             <motion.div key="path" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <Path educationLevel={user.educationLevel} />
+              <Path user={user} />
             </motion.div>
           )}
           {activeTab === 'pulse' && (
@@ -117,40 +118,89 @@ export default function App() {
               <Pulse userId={user.id} />
             </motion.div>
           )}
+          {activeTab === 'insights' && (
+            <motion.div key="insights" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
+              <Insights userId={user.id} />
+            </motion.div>
+          )}
           {activeTab === 'profile' && (
             <motion.div key="profile" initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} exit={{ opacity: 0, y: -20 }}>
-              <div className="bg-white p-8 rounded-[32px] shadow-sm">
-                <h2 className="text-2xl font-serif font-bold mb-6">Profile Settings</h2>
-                <div className="space-y-4">
-                  <div className="flex justify-between py-4 border-b">
-                    <span className="text-gray-500">Name</span>
-                    <span className="font-medium">{user.fullName}</span>
-                  </div>
-                  <div className="flex justify-between py-4 border-b">
-                    <span className="text-gray-500">Education</span>
-                    <span className="font-medium">{user.educationLevel}</span>
-                  </div>
-                  <div className="flex justify-between py-4 border-b">
-                    <span className="text-gray-500">Goal</span>
-                    <span className="font-medium">{user.goals?.shortTerm}</span>
-                  </div>
-                  <div className="pt-6">
-                    <p className="text-gray-500 text-sm mb-4">Vision Board</p>
-                    {user.visionBoard ? (
-                      <img src={user.visionBoard} alt="Vision Board" className="w-full rounded-2xl shadow-sm" referrerPolicy="no-referrer" />
-                    ) : (
-                      <div className="w-full aspect-video bg-gray-100 rounded-2xl flex items-center justify-center border-2 border-dashed border-gray-200">
-                        <p className="text-gray-400 text-sm">No vision board uploaded</p>
+              <div className="bg-white p-8 rounded-[32px] shadow-sm space-y-8">
+                <header>
+                  <h2 className="text-3xl font-serif font-bold">Profile Settings</h2>
+                  <p className="text-[#5A5A40] opacity-80">Manage your personal growth profile.</p>
+                </header>
+
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-[#5A5A40] border-b pb-2">Personal Info</h3>
+                    <div className="space-y-3">
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Full Name</span>
+                        <span className="font-medium">{user.fullName}</span>
                       </div>
-                    )}
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Email</span>
+                        <span className="font-medium">{user.email}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">Education</span>
+                        <span className="font-medium">{user.educationLevel}</span>
+                      </div>
+                      <div className="flex justify-between">
+                        <span className="text-gray-500">DOB</span>
+                        <span className="font-medium">{user.dob}</span>
+                      </div>
+                    </div>
+                  </div>
+
+                  <div className="space-y-4">
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-[#5A5A40] border-b pb-2">Your Goals</h3>
+                    <div className="space-y-3">
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase font-bold">Short-term</p>
+                        <p className="font-medium">{user.goals?.shortTerm}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase font-bold">Long-term</p>
+                        <p className="font-medium">{user.goals?.longTerm}</p>
+                      </div>
+                      <div>
+                        <p className="text-xs text-gray-400 uppercase font-bold">Interests</p>
+                        <p className="font-medium">{user.goals?.interests}</p>
+                      </div>
+                    </div>
                   </div>
                 </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-bold uppercase tracking-widest text-[#5A5A40] border-b pb-2">Vision Board</h3>
+                  {user.visionBoard ? (
+                    <div className="relative group">
+                      <img 
+                        src={user.visionBoard} 
+                        alt="Vision Board" 
+                        className="w-full rounded-[24px] shadow-lg object-cover max-h-[400px]" 
+                        referrerPolicy="no-referrer" 
+                      />
+                      <div className="absolute inset-0 bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity rounded-[24px] flex items-center justify-center">
+                        <span className="text-white font-medium">Your Future Self</span>
+                      </div>
+                    </div>
+                  ) : (
+                    <div className="w-full aspect-video bg-gray-50 rounded-[24px] flex flex-col items-center justify-center border-2 border-dashed border-gray-200">
+                      <p className="text-gray-400 text-sm">No vision board URL provided.</p>
+                      <p className="text-gray-400 text-xs mt-1">Add one in onboarding to visualize your goals.</p>
+                    </div>
+                  )}
+                </div>
+
                 <button 
                   onClick={() => {
                     localStorage.removeItem('path_pulse_userId');
                     window.location.reload();
                   }}
-                  className="mt-8 w-full py-4 bg-red-50 text-red-600 rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-red-100 transition-colors"
+                  className="w-full py-4 bg-red-50 text-red-600 rounded-2xl font-medium flex items-center justify-center gap-2 hover:bg-red-100 transition-colors"
                 >
                   <LogOut className="w-5 h-5" />
                   Sign Out
@@ -182,6 +232,13 @@ export default function App() {
         >
           <Heart className="w-6 h-6" />
           <span className="text-[10px] font-bold uppercase tracking-widest">Pulse</span>
+        </button>
+        <button 
+          onClick={() => setActiveTab('insights')}
+          className={`flex flex-col items-center gap-1 transition-colors ${activeTab === 'insights' ? 'text-[#5A5A40]' : 'text-gray-400'}`}
+        >
+          <BarChart2 className="w-6 h-6" />
+          <span className="text-[10px] font-bold uppercase tracking-widest">Insights</span>
         </button>
         <button 
           onClick={() => setActiveTab('profile')}

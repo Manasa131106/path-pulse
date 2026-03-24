@@ -65,26 +65,31 @@ async function startServer() {
 
   // API Routes
   app.post("/api/profile/setup", (req, res) => {
-    const { userId, ...profile } = req.body;
+    const { userId, aiTasks, aiRoadmap, ...profile } = req.body;
     const userIndex = users.findIndex(u => u.id === userId);
     if (userIndex === -1) return res.status(404).json({ error: "User not found" });
 
-    const updatedUser = { ...users[userIndex], ...profile, is_new_user: false };
+    const updatedUser = { 
+      ...users[userIndex], 
+      ...profile, 
+      is_new_user: false,
+      skillGaps: aiRoadmap?.skillGaps || [],
+      roadmap: {
+        title: aiRoadmap?.roadmapTitle || "Your Journey",
+        steps: (aiRoadmap?.roadmapSteps || []).map((step: any, i: number) => ({
+          ...step,
+          status: i === 0 ? 'current' : 'locked'
+        }))
+      }
+    };
     users[userIndex] = updatedUser;
-    
-    // Generate tasks based on education level
-    const edu = profile.educationLevel;
-    const generatedTasks = [
-      { id: Date.now() + 1, userId, text: `Research ${edu} career roadmaps`, completed: false, type: 'daily', category: 'Career' },
-      { id: Date.now() + 2, userId, text: "Set up a study environment", completed: false, type: 'daily', category: 'Skill' },
-      { id: Date.now() + 3, userId, text: "Read one article about your interest", completed: false, type: 'weekly', category: 'Interest' }
-    ];
-    
-    if (edu === 'B.Tech') {
-      generatedTasks.push({ id: Date.now() + 4, userId, text: "Learn SQL basics", completed: false, type: 'daily', category: 'Skill' });
-    } else if (edu === 'Inter') {
-      generatedTasks.push({ id: Date.now() + 5, userId, text: "Practice 10 problems", completed: false, type: 'daily', category: 'Skill' });
-    }
+
+    const generatedTasks = (aiTasks || []).map((t: any, i: number) => ({
+      ...t,
+      id: Date.now() + i,
+      userId,
+      completed: false
+    }));
 
     tasks.push(...generatedTasks);
     res.json(updatedUser);
@@ -97,7 +102,20 @@ async function startServer() {
 
   app.get("/api/tasks", (req, res) => {
     const userId = req.query.userId;
-    const userTasks = tasks.filter(t => t.userId === userId);
+    const user = users.find(u => u.id === userId);
+    let userTasks = tasks.filter(t => t.userId === userId);
+    
+    if (user?.strictMode) {
+      const firstUncompleted = userTasks.find(t => !t.completed);
+      if (firstUncompleted) {
+        // In strict mode, only show the current active task
+        userTasks = [firstUncompleted];
+      } else {
+        // All tasks completed
+        userTasks = [];
+      }
+    }
+    
     res.json(userTasks);
   });
 
@@ -113,9 +131,22 @@ async function startServer() {
   });
 
   app.post("/api/pulse", (req, res) => {
-    const data = req.body;
-    pulseData.push(data);
-    res.json({ status: "success" });
+    const { userId, aiFeedback, ...pulse } = req.body;
+    
+    const response = { ...pulse, userId, timestamp: new Date().toISOString(), aiFeedback };
+    pulseData.push(response);
+
+    // Update user burnout status
+    const userIndex = users.findIndex(u => u.id === userId);
+    if (userIndex !== -1 && aiFeedback) {
+      users[userIndex].burnoutStatus = {
+        level: aiFeedback.burnoutRisk > 70 ? 'High' : aiFeedback.burnoutRisk > 40 ? 'Moderate' : 'Low',
+        warning: aiFeedback.status === 'Burnout' ? "High risk of burnout detected." : aiFeedback.status === 'Warning' ? "Moderately high stress levels." : "Healthy state.",
+        recommendation: aiFeedback.suggestion
+      };
+    }
+    
+    res.json(response);
   });
 
   app.get("/api/pulse/:userId", (req, res) => {
@@ -126,22 +157,89 @@ async function startServer() {
   app.get("/api/dashboard-data", (req, res) => {
     const userId = req.query.userId;
     const user = users.find(u => u.id === userId);
-    const userTasks = tasks.filter(t => t.userId === userId);
+    let userTasks = tasks.filter(t => t.userId === userId);
     const completedTasks = userTasks.filter(t => t.completed).length;
-    const progress = userTasks.length > 0 ? (completedTasks / userTasks.length) * 100 : 0;
+    const progress = userTasks.length > 0 ? Math.round((completedTasks / userTasks.length) * 100) : 0;
     
-    // Avatar parts logic: unlock every 2 tasks
+    // Strict Mode: Filter tasks for dashboard display
+    const displayTasks = user?.strictMode 
+      ? (userTasks.find(t => !t.completed) ? [userTasks.find(t => !t.completed)!] : [])
+      : userTasks;
+
+    // Calculate streak based on pulse check-ins
+    const userPulses = pulseData
+      .filter(p => p.userId === userId)
+      .sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime());
+    
+    let streak = 0;
+    if (userPulses.length > 0) {
+      streak = 1;
+      let lastDate = new Date(userPulses[0].timestamp);
+      lastDate.setHours(0, 0, 0, 0);
+      
+      for (let i = 1; i < userPulses.length; i++) {
+        const currentDate = new Date(userPulses[i].timestamp);
+        currentDate.setHours(0, 0, 0, 0);
+        
+        const diffTime = Math.abs(lastDate.getTime() - currentDate.getTime());
+        const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+        
+        if (diffDays === 1) {
+          streak++;
+          lastDate = currentDate;
+        } else if (diffDays > 1) {
+          break;
+        }
+      }
+    }
+
+    // Priority task: First uncompleted task
+    const priorityTask = userTasks.find(t => !t.completed);
+    
     const partsCount = Math.floor(completedTasks / 2);
     const allParts = ["Base", "Hair", "Eyes", "Outfit", "Accessory"];
     const avatarParts = allParts.slice(0, Math.min(partsCount + 1, allParts.length));
 
     res.json({
       user,
-      tasks: userTasks,
+      tasks: displayTasks,
       progress,
-      streak: 1,
+      streak,
+      burnoutStatus: user?.burnoutStatus || { level: 'Low', warning: "Healthy state.", recommendation: "Keep it up!" },
+      recommendedAction: user?.burnoutStatus?.level === 'High' ? 'reduce tasks' : progress > 80 ? 'increase difficulty' : 'maintain',
+      priorityTask,
       achievements: partsCount,
-      avatarParts
+      avatarParts,
+      aiInsights: {
+        summary: "You're doing great!",
+        nextBigMove: "Complete your next task.",
+        recommendedAction: 'maintain'
+      }
+    });
+  });
+
+  app.get("/api/insights", (req, res) => {
+    const userId = req.query.userId as string;
+    
+    // Get mood history (last 7 days)
+    const userPulses = pulseData
+      .filter(p => p.userId === userId)
+      .sort((a, b) => new Date(a.timestamp).getTime() - new Date(b.timestamp).getTime())
+      .slice(-7);
+    
+    res.json({
+      weeklyProgress: [
+        { day: 'Mon', score: 20 }, { day: 'Tue', score: 45 }, { day: 'Wed', score: 30 },
+        { day: 'Thu', score: 60 }, { day: 'Fri', score: 80 }, { day: 'Sat', score: 50 }, { day: 'Sun', score: 90 }
+      ],
+      moodTrend: userPulses.map(p => ({
+        day: new Date(p.timestamp).toLocaleDateString('en-US', { weekday: 'short' }),
+        level: p.mood === 'Great' ? 5 : p.mood === 'Good' ? 4 : p.mood === 'Neutral' ? 3 : p.mood === 'Low' ? 2 : 1
+      })),
+      skillDistribution: [
+        { category: 'Career', value: 40 }, { category: 'Skill', value: 30 },
+        { category: 'Interest', value: 20 }, { category: 'Mindfulness', value: 10 }
+      ]
     });
   });
 

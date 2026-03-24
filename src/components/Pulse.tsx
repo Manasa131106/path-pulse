@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import { motion } from 'motion/react';
 import { Brain, Send, Sparkles, Activity, Zap } from 'lucide-react';
 import { PulseResponse } from '../types';
+import { analyzePulse } from '../services/aiService';
 
 interface PulseProps {
   userId: string;
@@ -41,15 +42,34 @@ export default function Pulse({ userId }: PulseProps) {
       const stress = stressScore > 7 ? 'High' : stressScore > 4 ? 'Medium' : 'Low';
       const motivation = motivationScore > 4 ? 'High' : motivationScore > 2 ? 'Medium' : 'Low';
 
-      await fetch('/api/pulse', {
+      // Fetch additional data for AI analysis
+      const tasksRes = await fetch(`/api/tasks?userId=${userId}`);
+      const userTasks = await tasksRes.json();
+      const completedTasks = userTasks.filter((t: any) => t.completed).length;
+      const completionRate = userTasks.length > 0 ? Math.round((completedTasks / userTasks.length) * 100) : 100;
+
+      const pulseHistoryRes = await fetch(`/api/pulse/${userId}`);
+      const lastPulse = await pulseHistoryRes.json();
+      const last5Moods = lastPulse.mood ? [lastPulse.mood] : []; // Simplified for now
+
+      const aiFeedback = await analyzePulse(
+        mood,
+        stress,
+        motivation,
+        last5Moods,
+        completionRate
+      );
+
+      const res = await fetch('/api/pulse', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ userId, answers, mood, stress, motivation })
+        body: JSON.stringify({ userId, answers, mood, stress, motivation, aiFeedback })
       });
 
-      const { analyzePulse } = await import('../services/aiService');
-      const result = await analyzePulse(mood, stress, motivation);
-      setAnalysis(result);
+      const result = await res.json();
+      if (result.aiFeedback) {
+        setAnalysis(result.aiFeedback);
+      }
     } catch (err) {
       console.error(err);
     } finally {
@@ -141,6 +161,28 @@ export default function Pulse({ userId }: PulseProps) {
                   <p className="text-lg font-medium">{analysis.motivation}</p>
                 </div>
               </div>
+
+              {analysis.burnoutRisk !== undefined && (
+                <div className="pt-4 border-t border-white/10">
+                  <div className="flex justify-between items-center mb-2">
+                    <p className="text-white/60 text-xs uppercase font-bold tracking-widest">Burnout Risk</p>
+                    <span className={`text-xs font-bold px-2 py-0.5 rounded-full ${
+                      analysis.burnoutRisk > 70 ? 'bg-red-500/20 text-red-200' : 
+                      analysis.burnoutRisk > 40 ? 'bg-amber-500/20 text-amber-200' : 'bg-green-500/20 text-green-200'
+                    }`}>{analysis.burnoutRisk}%</span>
+                  </div>
+                  <div className="h-2 bg-white/10 rounded-full overflow-hidden">
+                    <motion.div 
+                      initial={{ width: 0 }}
+                      animate={{ width: `${analysis.burnoutRisk}%` }}
+                      className={`h-full ${
+                        analysis.burnoutRisk > 70 ? 'bg-red-400' : 
+                        analysis.burnoutRisk > 40 ? 'bg-amber-400' : 'bg-green-400'
+                      }`}
+                    />
+                  </div>
+                </div>
+              )}
             </div>
 
             <button

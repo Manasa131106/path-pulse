@@ -6,12 +6,28 @@ export interface UserProfile {
   dob: string;
   visionBoard?: string;
   is_new_user: boolean;
+  currentSkillLevel?: 'Beginner' | 'Intermediate';
+  skillGaps?: string[];
+  roadmap?: {
+    title: string;
+    steps: {
+      title: string;
+      description: string;
+      status: 'locked' | 'current' | 'completed';
+    }[];
+  };
   goals?: {
     shortTerm: string;
     longTerm: string;
     reason: string;
     interests: string;
   };
+  burnoutStatus?: {
+    level: 'Low' | 'Moderate' | 'High';
+    warning: string;
+    recommendation: string;
+  };
+  strictMode?: boolean;
 }
 
 export interface Task {
@@ -21,12 +37,14 @@ export interface Task {
   completed: boolean;
   type: 'daily' | 'weekly';
   category: string;
+  difficulty: 'Easy' | 'Medium' | 'Hard';
+  aiReasoning?: string;
 }
 
 export interface PulseResponse {
   userId: string;
   timestamp: string;
-  answers: number[]; // 1-5 scale for 5 questions
+  answers: number[]; 
   mood: string;
   stress: string;
   motivation: string;
@@ -34,6 +52,9 @@ export interface PulseResponse {
     analysis: string;
     suggestion: string;
     motivation: string;
+    burnoutRisk: number; // 0-100
+    status: 'Normal' | 'Warning' | 'Burnout';
+    recommendation: 'reduce tasks' | 'maintain' | 'push harder';
   };
 }
 
@@ -42,6 +63,25 @@ export interface DashboardData {
   tasks: Task[];
   progress: number;
   streak: number;
+  burnoutStatus: {
+    level: 'Low' | 'Moderate' | 'High';
+    warning: string;
+    recommendation: string;
+  };
+  recommendedAction: 'reduce tasks' | 'maintain' | 'increase difficulty';
+  priorityTask?: Task;
   achievements: number;
-  avatarParts: string[]; // List of unlocked parts
+  avatarParts: string[];
+  aiInsights: {
+    summary: string;
+    nextBigMove: string;
+    burnoutAlert?: string;
+    recommendedAction: 'reduce tasks' | 'maintain' | 'increase difficulty';
+  };
+}
+
+export interface InsightData {
+  weeklyProgress: { day: string; score: number }[];
+  moodTrend: { day: string; level: number }[];
+  skillDistribution: { category: string; value: number }[];
 }

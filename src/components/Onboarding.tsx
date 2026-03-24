@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
-import { ChevronRight, User, GraduationCap, Calendar, Target, Heart, Sparkles } from 'lucide-react';
+import { ChevronRight, User, GraduationCap, Calendar, Target, Heart, Sparkles, Loader2 } from 'lucide-react';
+import { generateAdaptiveTasks, generateInitialRoadmap } from '../services/aiService';
 
 interface OnboardingProps {
   userId: string;
@@ -9,6 +10,7 @@ interface OnboardingProps {
 
 export default function Onboarding({ userId, onComplete }: OnboardingProps) {
   const [step, setStep] = useState(0);
+  const [loading, setLoading] = useState(false);
   const [profile, setProfile] = useState({
     fullName: '',
     educationLevel: 'B.Tech',
@@ -18,6 +20,8 @@ export default function Onboarding({ userId, onComplete }: OnboardingProps) {
     longTerm: '',
     reason: '',
     interests: '',
+    currentSkillLevel: 'Beginner',
+    strictMode: false,
   });
 
   const steps = [
@@ -28,41 +32,71 @@ export default function Onboarding({ userId, onComplete }: OnboardingProps) {
         { name: 'fullName', label: 'Full Name', type: 'text', icon: <User className="w-5 h-5" /> },
         { name: 'educationLevel', label: 'Education Level', type: 'select', options: ['10th', 'Inter', 'B.Tech', 'Other'], icon: <GraduationCap className="w-5 h-5" /> },
         { name: 'dob', label: 'Date of Birth', type: 'date', icon: <Calendar className="w-5 h-5" /> },
-        { name: 'visionBoard', label: 'Vision Board Image URL', type: 'text', icon: <Sparkles className="w-5 h-5" /> },
+        { name: 'strictMode', label: 'Strict Mode (One task at a time)', type: 'checkbox', icon: <Target className="w-5 h-5" /> },
       ]
     },
     {
-      title: "Short-term Goal",
-      description: "What do you want to achieve in the next 3-6 months?",
-      fields: [{ name: 'shortTerm', label: 'Short-term Goal', type: 'text', icon: <Target className="w-5 h-5" /> }]
+      title: "Skill Level",
+      description: "Where are you currently in your journey?",
+      fields: [
+        { name: 'currentSkillLevel', label: 'Current Skill Level', type: 'select', options: ['Beginner', 'Intermediate'], icon: <Sparkles className="w-5 h-5" /> },
+      ]
     },
     {
-      title: "Long-term Goal",
-      description: "Where do you see yourself in 5 years?",
-      fields: [{ name: 'longTerm', label: 'Long-term Goal', type: 'text', icon: <ChevronRight className="w-5 h-5" /> }]
+      title: "Goals",
+      description: "What are you aiming for?",
+      fields: [
+        { name: 'shortTerm', label: 'Short-term Goal (3-6 months)', type: 'text', icon: <Target className="w-5 h-5" /> },
+        { name: 'longTerm', label: 'Long-term Goal (5 years)', type: 'text', icon: <ChevronRight className="w-5 h-5" /> },
+      ]
+    },
+    {
+      title: "Interests & Vision",
+      description: "What drives you?",
+      fields: [
+        { name: 'interests', label: 'Interests (comma separated)', type: 'text', icon: <Sparkles className="w-5 h-5" /> },
+        { name: 'visionBoard', label: 'Vision Board Image URL', type: 'text', icon: <Sparkles className="w-5 h-5" /> },
+      ]
     },
     {
       title: "Why Path & Pulse?",
       description: "What brings you to our ecosystem?",
       fields: [{ name: 'reason', label: 'Your Reason', type: 'textarea', icon: <Heart className="w-5 h-5" /> }]
-    },
-    {
-      title: "Interests",
-      description: "What topics or skills fascinate you?",
-      fields: [{ name: 'interests', label: 'Interests', type: 'text', icon: <Sparkles className="w-5 h-5" /> }]
     }
   ];
 
-  const handleNext = () => {
+  const handleNext = async () => {
     if (step < steps.length - 1) {
       setStep(step + 1);
     } else {
-      onComplete({ ...profile, userId });
+      setLoading(true);
+      try {
+        const [aiTasks, aiRoadmap] = await Promise.all([
+          generateAdaptiveTasks(
+            profile.educationLevel,
+            profile.interests,
+            0,
+            []
+          ),
+          generateInitialRoadmap(profile)
+        ]);
+        onComplete({ ...profile, userId, aiTasks, aiRoadmap });
+      } catch (error) {
+        console.error("AI Generation failed, using fallbacks:", error);
+        onComplete({ ...profile, userId });
+      } finally {
+        setLoading(false);
+      }
     }
   };
 
   const handleChange = (e: React.ChangeEvent<HTMLInputElement | HTMLSelectElement | HTMLTextAreaElement>) => {
-    setProfile({ ...profile, [e.target.name]: e.target.value });
+    const { name, value, type } = e.target;
+    if (type === 'checkbox') {
+      setProfile({ ...profile, [name]: (e.target as HTMLInputElement).checked });
+    } else {
+      setProfile({ ...profile, [name]: value });
+    }
   };
 
   const currentStep = steps[step];
@@ -118,6 +152,17 @@ export default function Onboarding({ userId, onComplete }: OnboardingProps) {
                       onChange={handleChange}
                       className="w-full p-4 bg-[#F5F5F0] border-none rounded-2xl focus:ring-2 focus:ring-[#5A5A40] outline-none transition-all min-h-[100px]"
                     />
+                  ) : field.type === 'checkbox' ? (
+                    <div className="flex items-center gap-3 p-4 bg-[#F5F5F0] rounded-2xl">
+                      <input
+                        type="checkbox"
+                        name={field.name}
+                        checked={(profile as any)[field.name]}
+                        onChange={handleChange}
+                        className="w-5 h-5 accent-[#5A5A40]"
+                      />
+                      <span className="text-sm text-gray-600">Enable Strict Mode for focused growth</span>
+                    </div>
                   ) : (
                     <input
                       type={field.type}
@@ -134,10 +179,17 @@ export default function Onboarding({ userId, onComplete }: OnboardingProps) {
 
           <button
             onClick={handleNext}
-            className="w-full py-4 bg-[#5A5A40] text-white rounded-full font-medium flex items-center justify-center gap-2 hover:bg-[#4A4A30] transition-colors shadow-lg shadow-[#5A5A40]/20"
+            disabled={loading}
+            className="w-full py-4 bg-[#5A5A40] text-white rounded-full font-medium flex items-center justify-center gap-2 hover:bg-[#4A4A30] transition-colors shadow-lg shadow-[#5A5A40]/20 disabled:opacity-50"
           >
-            {step === steps.length - 1 ? 'Get Started' : 'Next Step'}
-            <ChevronRight className="w-5 h-5" />
+            {loading ? (
+              <Loader2 className="w-5 h-5 animate-spin" />
+            ) : (
+              <>
+                {step === steps.length - 1 ? 'Get Started' : 'Next Step'}
+                <ChevronRight className="w-5 h-5" />
+              </>
+            )}
           </button>
         </div>
       </motion.div>
